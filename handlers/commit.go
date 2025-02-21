@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"strings"
+
 	"github.com/tanayarun/lazydev/services"
 
 	"github.com/gofiber/fiber/v2"
@@ -15,5 +17,9 @@ func GetCommitHandler(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to fetch commit"})
 	}
 
-	return c.JSON(commit)
+	return c.JSON(fiber.Map{
+		"sha":     commit.Sha,
+		"message": strings.Split(commit.Commit.Message, "\n")[0], // Get only the first line
+	})
+
 }
