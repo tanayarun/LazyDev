@@ -9,7 +9,7 @@ import (
 )
 
 func GetCommitHandler(c *fiber.Ctx) error {
-	owner := c.Query("owner", "torvalds") // Default repo
+	owner := c.Query("owner", "torvalds") 
 	repo := c.Query("repo", "linux")
 
 	commit, err := services.FetchLatestCommit(owner, repo)
@@ -19,7 +19,7 @@ func GetCommitHandler(c *fiber.Ctx) error {
 
 	return c.JSON(fiber.Map{
 		"sha":     commit.Sha,
-		"message": strings.Split(commit.Commit.Message, "\n")[0], // Get only the first line
+		"message": strings.Split(commit.Commit.Message, "\n")[0], 
 	})
 
 }
