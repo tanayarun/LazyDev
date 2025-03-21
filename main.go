@@ -20,7 +20,6 @@ type PullRequest struct {
 	RepoName string `json:"repo_name"`
 }
 
-// Function to check if a PR is merged
 func checkMergedStatus(owner, repo string, prNumber int) (string, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s/pulls/%d", GITHUB_API, owner, repo, prNumber)
 
@@ -39,12 +38,12 @@ func checkMergedStatus(owner, repo string, prNumber int) (string, error) {
 	}
 
 	if prData.MergedAt == nil {
-		return "", nil // Not merge
+		return "", nil 
 	}
 	return *prData.MergedAt, nil
 }
 
-// Function to fetch all PRs created by the user
+
 func getUserPRs(username string) ([]PullRequest, error) {
 	url := fmt.Sprintf("%s/search/issues?q=author:%s+type:pr", GITHUB_API, username)
 
@@ -69,12 +68,12 @@ func getUserPRs(username string) ([]PullRequest, error) {
 
 	var prs []PullRequest
 	for _, pr := range result.Items {
-		// Extract repo name from repository URL
+		
 		repoParts := strings.Split(pr.RepoURL, "/")
-		owner := repoParts[len(repoParts)-2] // Extract repo owner
+		owner := repoParts[len(repoParts)-2] 
 		repoName := repoParts[len(repoParts)-1]
 
-		// Check if the PR is merged
+		
 		mergedAt, err := checkMergedStatus(owner, repoName, pr.Number)
 		if err != nil {
 			fmt.Println("Error checking merge status:", err)
