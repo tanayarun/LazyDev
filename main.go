@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gin-gonic/gin"
 )
 
 const GITHUB_API = "https://api.github.com"
@@ -39,7 +39,7 @@ func checkMergedStatus(owner, repo string, prNumber int) (string, error) {
 	}
 
 	if prData.MergedAt == nil {
-		return "", nil // Not merged
+		return "", nil // Not merge
 	}
 	return *prData.MergedAt, nil
 }
@@ -93,18 +93,19 @@ func getUserPRs(username string) ([]PullRequest, error) {
 }
 
 func main() {
-	app := fiber.New()
+	r := gin.Default()
 
-	app.Get("/prs/:username", func(c *fiber.Ctx) error {
-		username := c.Params("username")
+	r.GET("/prs/:username", func(c *gin.Context) {
+		username := c.Param("username")
 
 		prs, err := getUserPRs(username)
 		if err != nil {
-			return c.Status(500).SendString("Error fetching PRs")
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching PRs"})
+			return
 		}
 
-		return c.JSON(prs)
+		c.JSON(http.StatusOK, prs)
 	})
 
-	log.Fatal(app.Listen(":3000"))
+	log.Fatal(r.Run(":3000"))
 }
