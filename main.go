@@ -1,19 +1,110 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
 	"log"
-
-	"github.com/tanayarun/lazydev/routes"
+	"net/http"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 )
 
+const GITHUB_API = "https://api.github.com"
+
+type PullRequest struct {
+	Number   int    `json:"number"`
+	Title    string `json:"title"`
+	MergedAt string `json:"merged_at"`
+	HtmlURL  string `json:"html_url"`
+	RepoName string `json:"repo_name"`
+}
+
+// Function to check if a PR is merged
+func checkMergedStatus(owner, repo string, prNumber int) (string, error) {
+	url := fmt.Sprintf("%s/repos/%s/%s/pulls/%d", GITHUB_API, owner, repo, prNumber)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	var prData struct {
+		MergedAt *string `json:"merged_at"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&prData); err != nil {
+		return "", err
+	}
+
+	if prData.MergedAt == nil {
+		return "", nil // Not merged
+	}
+	return *prData.MergedAt, nil
+}
+
+// Function to fetch all PRs created by the user
+func getUserPRs(username string) ([]PullRequest, error) {
+	url := fmt.Sprintf("%s/search/issues?q=author:%s+type:pr", GITHUB_API, username)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Items []struct {
+			Number  int    `json:"number"`
+			Title   string `json:"title"`
+			HtmlURL string `json:"html_url"`
+			RepoURL string `json:"repository_url"`
+		} `json:"items"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, err
+	}
+
+	var prs []PullRequest
+	for _, pr := range result.Items {
+		// Extract repo name from repository URL
+		repoParts := strings.Split(pr.RepoURL, "/")
+		owner := repoParts[len(repoParts)-2] // Extract repo owner
+		repoName := repoParts[len(repoParts)-1]
+
+		// Check if the PR is merged
+		mergedAt, err := checkMergedStatus(owner, repoName, pr.Number)
+		if err != nil {
+			fmt.Println("Error checking merge status:", err)
+		}
+
+		prs = append(prs, PullRequest{
+			Number:   pr.Number,
+			Title:    pr.Title,
+			MergedAt: mergedAt,
+			HtmlURL:  pr.HtmlURL,
+			RepoName: repoName,
+		})
+	}
+
+	return prs, nil
+}
+
 func main() {
 	app := fiber.New()
 
-	
-	routes.SetupRoutes(app)
+	app.Get("/prs/:username", func(c *fiber.Ctx) error {
+		username := c.Params("username")
 
-	
+		prs, err := getUserPRs(username)
+		if err != nil {
+			return c.Status(500).SendString("Error fetching PRs")
+		}
+
+		return c.JSON(prs)
+	})
+
 	log.Fatal(app.Listen(":3000"))
 }
